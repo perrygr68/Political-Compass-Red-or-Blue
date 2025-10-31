@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Red or Blue Alignment Quiz</title>
+    <!-- Load Tailwind CSS for modern styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f7f7;
+            min-height: 100vh;
+        }
+        /* Custom colors for Red and Blue */
+        .color-red { background-color: #dc2626; }
+        .color-blue { background-color: #2563eb; }
+        .red-text { color: #dc2626; }
+        .blue-text { color: #2563eb; }
+        
+        .result-bar {
+            height: 2.5rem; /* h-10 */
+            border-radius: 0.5rem; /* rounded-lg */
+            overflow: hidden;
+            display: flex;
+            transition: all 1.5s ease-out;
+        }
+        
+        .option-button {
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        .option-button:hover {
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body class="p-4 flex items-center justify-center">
+
+    <div id="app" class="w-full max-w-lg bg-white shadow-xl rounded-2xl p-6 md:p-10 my-8">
+        
+        <!-- Header -->
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-extrabold text-gray-800 mb-2">Political Compass</h1>
+            <p class="text-gray-500">Find your general alignment: Red (Conservative) or Blue (Liberal).</p>
+        </header>
+
+        <!-- Quiz Container (Always visible now) -->
+        <div id="quiz-container">
+            <h2 id="question-text" class="text-xl font-semibold mb-6 text-gray-700 leading-relaxed">
+                <span class="text-2xl font-bold red-text" id="q-counter"></span>
+            </h2>
+            
+            <div id="options-container" class="space-y-4">
+                <!-- Options will be injected here -->
+            </div>
+        </div>
+
+        <!-- Result Container (Hidden until quiz ends) -->
+        <div id="result-container" class="hidden text-center">
+            <h2 class="text-3xl font-bold text-gray-800 mb-6">Your Political Alignment</h2>
+            
+            <div class="mb-8">
+                <p class="text-2xl font-bold mb-4" id="result-title"></p>
+                <div class="result-bar">
+                    <div id="red-bar" class="color-red flex items-center justify-end p-2 text-white font-bold" style="width: 0%;">
+                        <span id="red-percent-text" class="text-sm">0%</span>
+                    </div>
+                    <div id="blue-bar" class="color-blue flex items-center justify-start p-2 text-white font-bold" style="width: 100%;">
+                        <span id="blue-percent-text" class="text-sm">0%</span>
+                    </div>
+                </div>
+                <div class="flex justify-between text-sm font-semibold mt-1">
+                    <span class="red-text">Red Score: <span id="final-red-score">0</span></span>
+                    <span class="blue-text">Blue Score: <span id="final-blue-score">0</span></span>
+                </div>
+            </div>
+
+            <p id="result-summary" class="text-lg text-gray-600 mb-8"></p>
+            
+            <button id="restart-button" class="bg-indigo-600 text-white font-semibold py-3 px-6 rounded-xl hover:bg-indigo-700 shadow-md transition-all">
+                Try Again
+            </button>
+            <p class="text-xs text-gray-400 mt-4">Note: This is a simple, fun quiz based on generalized political themes.</p>
+        </div>
+    </div>
+
+    <script>
+        const allQuestions = [
+            // 1. Economic Policy
+            { q: "What is the best way to stimulate the economy?", options: [
+                { text: "Lower taxes on corporations and high-income earners.", score: { red: 2, blue: 0 } },
+                { text: "Increase government spending on infrastructure and social programs.", score: { red: 0, blue: 2 } },
+                { text: "Focus on reducing national debt and balancing the budget.", score: { red: 1, blue: 1 } },
+            ]},
+            // 2. Healthcare
+            { q: "What is your stance on healthcare?", options: [
+                { text: "It should be a market-based system with private insurance options.", score: { red: 2, blue: 0 } },
+                { text: "The government should ensure healthcare coverage for all citizens.", score: { red: 0, blue: 2 } },
+                { text: "A mix of public and private options with heavy regulation.", score: { red: 1, blue: 1 } },
+            ]},
+            // 3. Environmental Regulation
+            { q: "How should the government approach climate change and environmental regulations?", options: [
+                { text: "Prioritize economic growth and limit regulations on businesses.", score: { red: 2, blue: 0 } },
+                { text: "Implement aggressive regulations and invest heavily in renewable energy.", score: { red: 0, blue: 2 } },
+                { text: "Incentivize private companies to adopt cleaner technology.", score: { red: 1, blue: 1 } },
+            ]},
+            // 4. Social Issues/Rights
+            { q: "Which best describes your view on personal freedoms and social issues?", options: [
+                { text: "The government should enforce traditional moral standards.", score: { red: 2, blue: 0 } },
+                { text: "The government should protect all individual and minority rights equally.", score: { red: 0, blue: 2 } },
+                { text: "Government should stay out of most personal issues entirely.", score: { red: 1, blue: 1 } },
+            ]},
+            // 5. Immigration
+            { q: "What is the highest priority for immigration policy?", options: [
+                { text: "Strengthening border security and enforcement.", score: { red: 2, blue: 0 } },
+                { text: "Creating pathways to citizenship for current undocumented residents.", score: { red: 0, blue: 2 } },
+                { text: "Streamlining legal immigration for skilled workers.", score: { red: 1, blue: 1 } },
+            ]},
+            // 6. Gun Control
+            { q: "What is your position on firearm regulation?", options: [
+                { text: "Protecting the right to bear arms is paramount; oppose new restrictions.", score: { red: 2, blue: 0 } },
+                { text: "Implementing universal background checks and banning assault weapons.", score: { red: 0, blue: 2 } },
+                { text: "Strict enforcement of existing laws and mental health support.", score: { red: 1, blue: 1 } },
+            ]},
+            // 7. Military/Foreign Policy
+            { q: "What role should the military play in global affairs?", options: [
+                { text: "Maintain a dominant global presence and act unilaterally when necessary.", score: { red: 2, blue: 0 } },
+                { text: "Prioritize diplomacy and international cooperation over military intervention.", score: { red: 0, blue: 2 } },
+                { text: "Focus primarily on defense and homeland security.", score: { red: 1, blue: 1 } },
+            ]},
+            // 8. Education
+            { q: "What is the best way to improve K-12 education?", options: [
+                { text: "Implement school choice and voucher programs.", score: { red: 2, blue: 0 } },
+                { text: "Increase funding for public schools and raise teacher salaries.", score: { red: 0, blue: 2 } },
+                { text: "Allow local communities and parents greater control over curriculum.", score: { red: 1, blue: 1 } },
+            ]},
+            // 9. Taxes/Wealth
+            { q: "How should taxes on the wealthy be handled?", options: [
+                { text: "Cut taxes to encourage investment and job creation.", score: { red: 2, blue: 0 } },
+                { text: "Raise taxes to fund social services and reduce income inequality.", score: { red: 0, blue: 2 } },
+                { text: "Keep current tax rates but close loopholes.", score: { red: 1, blue: 1 } },
+            ]},
+            // 10. Judicial Appointments
+            { q: "What is the most important factor for judicial appointments?", options: [
+                { text: "Adherence to the original meaning of the founding documents.", score: { red: 2, blue: 0 } },
+                { text: "A willingness to adapt the law to contemporary social needs.", score: { red: 0, blue: 2 } },
+                { text: "Professional experience and integrity above all else.", score: { red: 1, blue: 1 } },
+            ]},
+            // 11. Government Size
+            { q: "In general, do you prefer a smaller or larger government?", options: [
+                { text: "Smaller government with less regulation.", score: { red: 2, blue: 0 } },
+                { text: "Larger government to manage societal problems.", score: { red: 0, blue: 2 } },
+                { text: "Lean, efficient government that focuses on core functions.", score: { red: 1, blue: 1 } },
+            ]},
+            // 12. Trade
+            { q: "What is your view on international trade?", options: [
+                { text: "Implement tariffs to protect domestic industries and jobs.", score: { red: 2, blue: 0 } },
+                { text: "Promote free trade agreements and global cooperation.", score: { red: 0, blue: 2 } },
+                { text: "Focus on fair trade that respects labor and environmental standards.", score: { red: 1, blue: 1 } },
+            ]},
+            // 13. Labor Unions & Worker Rights
+            { q: "What is the government's role regarding labor unions and worker rights?", options: [
+                { text: "Minimize union power and prioritize the rights of employers to hire and fire freely.", score: { red: 2, blue: 0 } },
+                { text: "Strengthen union bargaining power and ensure high minimum wages and paid leave policies.", score: { red: 0, blue: 2 } },
+                { text: "Enforce existing labor laws but let markets determine most wage and benefit levels.", score: { red: 1, blue: 1 } },
+            ]},
+            // 14. Public Funding for Arts/Media
+            { q: "Should public funds be used to support cultural institutions like public broadcasting or the arts?", options: [
+                { text: "No, these organizations should be funded entirely through private donations and market revenue.", score: { red: 2, blue: 0 } },
+                { text: "Yes, cultural and educational programming are essential public services that require government support.", score: { red: 0, blue: 2 } },
+                { text: "Public funding should be limited, but tax incentives should be offered to private donors.", score: { red: 1, blue: 1 } },
+            ]},
+            // 15. Corporate Regulation & Monopolies
+            { q: "How should large corporations and monopolies be managed?", options: [
+                { text: "Minimal government interference; let competition and consumer choice drive outcomes.", score: { red: 2, blue: 0 } },
+                { text: "Heavy regulation and antitrust actions are necessary to prevent market domination and abuse of power.", score: { red: 0, blue: 2 } },
+                { text: "Regulate only essential services (like utilities) but maintain a hands-off approach elsewhere.", score: { red: 1, blue: 1 } },
+            ]},
+            // 16. Social Justice/Racial Issues: Affirmative Action
+            { q: "Should universities be allowed to use race as a factor in admissions to promote diversity?", options: [
+                { text: "No, merit should be the sole factor for admissions.", score: { red: 2, blue: 0 } },
+                { text: "Yes, it is necessary to remedy historical inequality and promote diverse perspectives.", score: { red: 0, blue: 2 } },
+                { text: "Support diversity but prefer race-neutral economic measures.", score: { red: 1, blue: 1 } },
+            ]},
+            // 17. Social Justice/Racial Issues: Reparations
+            { q: "Should the government implement financial reparations for descendants of slaves?", options: [
+                { text: "No, it is unfair to current taxpayers for past wrongs.", score: { red: 2, blue: 0 } },
+                { text: "Yes, it is a moral obligation to address historic injustices.", score: { red: 0, blue: 2 } },
+                { text: "Focus on targeted investments in disadvantaged communities instead of direct payments.", score: { red: 1, blue: 1 } },
+            ]},
+            // 18. Social Justice/Racial Issues: Diversity Training
+            { q: "Should government agencies mandate diversity and inclusion training for all employees?", options: [
+                { text: "No, mandatory training is often divisive and unnecessary.", score: { red: 2, blue: 0 } },
+                { text: "Yes, it is crucial for creating an equitable and fair workplace.", score: { red: 0, blue: 2 } },
+                { text: "Encourage training but leave it optional for most staff.", score: { red: 1, blue: 1 } },
+            ]},
+            // 19. Social Justice/Racial Issues: Police Use of Force
+            { q: "How should police use of force be handled?", options: [
+                { text: "Law enforcement needs maximum flexibility to keep communities safe.", score: { red: 2, blue: 0 } },
+                { text: "Strict national standards and external review boards are needed to curb abuses.", score: { red: 0, blue: 2 } },
+                { text: "Better training and more accountability, but respect police operational needs.", score: { red: 1, blue: 1 } },
+            ]},
+            // 20. Social Justice/Racial Issues: Cultural Appropriation
+            { q: "Is cultural appropriation a serious social problem that needs addressing?", options: [
+                { text: "No, cultural exchange is natural and should be encouraged.", score: { red: 2, blue: 0 } },
+                { text: "Yes, it is a form of disrespect and economic exploitation of marginalized groups.", score: { red: 0, blue: 2 } },
+                { text: "It can be disrespectful but is not a priority for government action.", score: { red: 1, blue: 1 } },
+            ]},
+            // 21. Technology/Privacy: Social Media Regulation
+            { q: "Should the government break up or heavily regulate large social media companies?", options: [
+                { text: "No, regulation chills free speech and technological innovation.", score: { red: 2, blue: 0 } },
+                { text: "Yes, they hold too much power and must be held accountable for misinformation and harm.", score: { red: 0, blue: 2 } },
+                { text: "Regulate data privacy only, but not content or company structure.", score: { red: 1, blue: 1 } },
+            ]},
+            // 22. Technology/Privacy: Net Neutrality
+            { q: "Should internet service providers (ISPs) be allowed to speed up or slow down content based on payment?", options: [
+                { text: "Yes, markets and competition should dictate service structure and pricing.", score: { red: 2, blue: 0 } },
+                { text: "No, the internet must be treated as a utility where all traffic is equal (Net Neutrality).", score: { red: 0, blue: 2 } },
+                { text: "Strict rules for consumer lines, but flexibility for enterprise services.", score: { red: 1, blue: 1 } },
+            ]},
+            // 23. Technology/Privacy: Digital Privacy
+            { q: "Should the government require companies to obtain explicit consent before collecting most user data?", options: [
+                { text: "No, excessive rules hurt small businesses and slow technology advancement.", score: { red: 2, blue: 0 } },
+                { text: "Yes, strong, clear laws are needed to protect consumer privacy.", score: { red: 0, blue: 2 } },
+                { text: "Encourage better privacy practices through industry standards and audits.", score: { red: 1, blue: 1 } },
+            ]},
+            // 24. Technology/Privacy: Encryption Access
+            { q: "Should law enforcement be able to legally compel tech companies to bypass encryption (backdoors) for investigations?", options: [
+                { text: "Yes, national security and public safety must come first.", score: { red: 2, blue: 0 } },
+                { text: "No, backdoors compromise the security of everyone and violate privacy.", score: { red: 0, blue: 2 } },
+                { text: "Allow access only with a warrant and under exceptional, clearly defined circumstances.", score: { red: 1, blue: 1 } },
+            ]},
+            // 25. Technology/Privacy: AI Development
+            { q: "How should the government manage the development of Artificial Intelligence?", options: [
+                { text: "Primarily through incentives and competition, minimizing red tape.", score: { red: 2, blue: 0 } },
+                { text: "Heavy regulatory oversight is needed to prevent societal risks and biases.", score: { red: 0, blue: 2 } },
+                { text: "Fund basic research and establish ethical guidelines without stifling innovation.", score: { red: 1, blue: 1 } },
+            ]},
+            // 26. Energy/Infrastructure: Fossil Fuels
+            { q: "Should the government continue to subsidize or promote domestic oil and gas production?", options: [
+                { text: "Yes, for energy independence and lower consumer prices.", score: { red: 2, blue: 0 } },
+                { text: "No, all subsidies should be shifted to clean and renewable energy sources.", score: { red: 0, blue: 2 } },
+                { text: "Phase out subsidies gradually as green alternatives become competitive.", score: { red: 1, blue: 1 } },
+            ]},
+            // 27. Energy/Infrastructure: Mass Transit vs. Highways
+            { q: "Where should federal infrastructure funds be primarily directed?", options: [
+                { text: "Building and maintaining roads and highways for drivers and commerce.", score: { red: 2, blue: 0 } },
+                { text: "Investing heavily in high-speed rail and public mass transit systems.", score: { red: 0, blue: 2 } },
+                { text: "Balanced funding for both, with a focus on modernizing existing infrastructure.", score: { red: 1, blue: 1 } },
+            ]},
+            // 28. Energy/Infrastructure: Zoning Laws
+            { q: "Should the federal government intervene to loosen local zoning laws (e.g., to allow multi-family housing) to address housing shortages?", options: [
+                { text: "No, local control over property and zoning must be maintained.", score: { red: 2, blue: 0 } },
+                { text: "Yes, federal incentives or mandates are necessary to increase density and affordability.", score: { red: 0, blue: 2 } },
+                { text: "Offer financial aid to local governments that voluntarily reform zoning.", score: { red: 1, blue: 1 } },
+            ]},
+            // 29. Energy/Infrastructure: Pipelines and Energy Projects
+            { q: "Should cross-state energy pipelines be easily approved to move resources?", options: [
+                { text: "Yes, they are vital for national energy distribution and efficiency.", score: { red: 2, blue: 0 } },
+                { text: "No, they pose unacceptable environmental risks and should be halted.", score: { red: 0, blue: 2 } },
+                { text: "Approval should be granted only after a rigorous, transparent environmental review.", score: { red: 1, blue: 1 } },
+            ]},
+            // 30. Energy/Infrastructure: Water Resources
+            { q: "Who should have the primary right to manage water resources during shortages?", options: [
+                { text: "State and local governments, respecting long-established water rights and agricultural needs.", score: { red: 2, blue: 0 } },
+                { text: "The federal government, based on scientific conservation needs and long-term sustainability.", score: { red: 0, blue: 2 } },
+                { text: "A federal-state compact that requires consensus before allocating water.", score: { red: 1, blue: 1 } },
+            ]},
+            // 31. Criminal Justice: Mandatory Minimums
+            { q: "Should judges be required to give mandatory minimum prison sentences for certain crimes?", options: [
+                { text: "Yes, they ensure consistency and act as a strong deterrent.", score: { red: 2, blue: 0 } },
+                { text: "No, they lead to overcrowding and prevent individualized justice.", score: { red: 0, blue: 2 } },
+                { text: "Keep them for the most severe violent crimes, but not for non-violent offenses.", score: { red: 1, blue: 1 } },
+            ]},
+            // 32. Criminal Justice: Bail Reform
+            { q: "Should cash bail be eliminated in favor of risk assessment systems?", options: [
+                { text: "No, cash bail is necessary to ensure defendants appear in court.", score: { red: 2, blue: 0 } },
+                { text: "Yes, cash bail unfairly punishes the poor and should be reformed.", score: { red: 0, blue: 2 } },
+                { text: "Limit cash bail to violent felony offenses only.", score: { red: 1, blue: 1 } },
+            ]},
+            // 33. Criminal Justice: Drug Enforcement
+            { q: "What should be the primary focus of drug enforcement policy?", options: [
+                { text: "Strict enforcement and long prison sentences for drug manufacturers and distributors.", score: { red: 2, blue: 0 } },
+                { text: "Treating addiction as a public health issue and investing in rehabilitation and treatment.", score: { red: 0, blue: 2 } },
+                { text: "Use tough enforcement against large dealers, but offer treatment options to users.", score: { red: 1, blue: 1 } },
+            ]},
+            // 34. Criminal Justice: Sentencing Lengths
+            { q: "Are current prison sentences generally too short or too long?", options: [
+                { text: "Generally too short, especially for repeat offenders.", score: { red: 2, blue: 0 } },
+                { text: "Generally too long, leading to excessive incarceration rates.", score: { red: 0, blue: 2 } },
+                { text: "Sentences are mostly appropriate, but non-violent offenders should have more release options.", score: { red: 1, blue: 1 } },
+            ]},
+            // 35. Criminal Justice: Body Cameras
+            { q: "Should all uniformed police officers be required to wear and use body cameras with strict recording protocols?", options: [
+                { text: "No, it is an undue burden on police operations and an invasion of officer privacy.", score: { red: 2, blue: 0 } },
+                { text: "Yes, it is essential for transparency and accountability to the public.", score: { red: 0, blue: 2 } },
+                { text: "Required for all high-risk interactions, but local departments should set policies.", score: { red: 1, blue: 1 } },
+            ]},
+            // 36. Financial Regulation: Financial Industry Regulation
+            { q: "How should the financial industry (banks, investments) be regulated?", options: [
+                { text: "Less regulation to encourage lending and economic competitiveness.", score: { red: 2, blue: 0 } },
+                { text: "Stronger regulations to prevent systemic risk and protect consumers from predatory practices.", score: { red: 0, blue: 2 } },
+                { text: "Maintain essential regulatory oversight but simplify compliance for smaller institutions.", score: { red: 1, blue: 1 } },
+            ]},
+            // 37. Financial Regulation: Minimum Wage
+            { q: "Should the federal minimum wage be significantly increased?", options: [
+                { text: "No, it destroys jobs and interferes with the free market.", score: { red: 2, blue: 0 } },
+                { text: "Yes, it is necessary to ensure a living wage and reduce poverty.", score: { red: 0, blue: 2 } },
+                { text: "Raise it modestly and allow states/cities to set their own higher rates.", score: { red: 1, blue: 1 } },
+            ]},
+            // 38. Financial Regulation: Inheritance Tax
+            { q: "Should large inheritances be subject to a substantial estate tax (death tax)?", options: [
+                { text: "No, it is double taxation and hurts family businesses.", score: { red: 2, blue: 0 } },
+                { text: "Yes, it is necessary to reduce the concentration of dynastic wealth.", score: { red: 0, blue: 2 } },
+                { text: "Keep the tax but raise the exemption threshold substantially.", score: { red: 1, blue: 1 } },
+            ]},
+            // 39. Financial Regulation: Universal Basic Income (UBI)
+            { q: "Should the government explore a Universal Basic Income (UBI) program?", options: [
+                { text: "No, it discourages work and is too expensive.", score: { red: 2, blue: 0 } },
+                { text: "Yes, it is necessary to address future job automation and poverty.", score: { red: 0, blue: 2 } },
+                { text: "Run small-scale trials to replace existing welfare programs.", score: { red: 1, blue: 1 } },
+            ]},
+            // 40. Financial Regulation: Student Loan Debt
+            { q: "How should the government address rising student loan debt?", options: [
+                { text: "Reform lending practices and focus on vocational/affordable colleges, but oppose loan forgiveness.", score: { red: 2, blue: 0 } },
+                { text: "Broadly forgive a large portion of existing student debt.", score: { red: 0, blue: 2 } },
+                { text: "Only forgive debt for those working in public service or who are facing extreme hardship.", score: { red: 1, blue: 1 } },
+            ]},
+            // 41. Financial Regulation: Disability/Welfare
+            { q: "What is the primary focus of disability and welfare programs?", options: [
+                { text: "Ensuring strict eligibility requirements to prevent fraud and dependency.", score: { red: 2, blue: 0 } },
+                { text: "Providing comprehensive support to ensure recipients can live with dignity.", score: { red: 0, blue: 2 } },
+                { text: "Streamline services to make them easier to access for eligible people while maintaining fiscal responsibility.", score: { red: 1, blue: 1 } },
+            ]},
+        ];
+
+        // UPDATED: Now set to 41 questions
+        const NUM_QUESTIONS = 41;
+        let currentQuestionIndex = 0;
+        let redScore = 0;
+        let blueScore = 0;
+        let quizQuestions = [];
+        let maxScore = NUM_QUESTIONS * 2; // Maximum score is 82 for 41 questions
+
+        // Removed paywall variables and elements
+        const quizContainer = document.getElementById('quiz-container');
+        const resultContainer = document.getElementById('result-container');
+        
+        const questionText = document.getElementById('question-text');
+        const qCounter = document.getElementById('q-counter');
+        const optionsContainer = document.getElementById('options-container');
+        const restartButton = document.getElementById('restart-button');
+
+        // Utility to select N random questions from the pool (already shuffles the questions)
+        function selectRandomQuestions(arr, n) {
+            // Note: Since N (41) is the same size as the array, it selects all of them
+            return arr.sort(() => 0.5 - Math.random()).slice(0, n);
+        }
+
+        // --- UPDATED: Quiz Logic (Now runs immediately) ---
+
+        function startQuiz() {
+            // Reset quiz state
+            currentQuestionIndex = 0;
+            redScore = 0;
+            blueScore = 0;
+            // Selects all 41 questions in a random order
+            quizQuestions = selectRandomQuestions(allQuestions, NUM_QUESTIONS);
+            
+            // Show quiz, hide results
+            quizContainer.classList.remove('hidden');
+            resultContainer.classList.add('hidden');
+
+            renderQuestion();
+        }
+
+        function renderQuestion() {
+            if (currentQuestionIndex >= NUM_QUESTIONS) {
+                showResults();
+                return;
+            }
+
+            const qData = quizQuestions[currentQuestionIndex];
+            
+            qCounter.textContent = `Question ${currentQuestionIndex + 1} / ${NUM_QUESTIONS}`;
+            questionText.innerHTML = `<span class="text-2xl font-bold text-gray-800">${currentQuestionIndex + 1} / ${NUM_QUESTIONS}:</span> ${qData.q}`;
+            
+            optionsContainer.innerHTML = ''; // Clear previous options
+
+            // SHUFFLE: Create a copy of the options array and randomize its order
+            const shuffledOptions = [...qData.options].sort(() => Math.random() - 0.5);
+
+            shuffledOptions.forEach((option) => {
+                const button = document.createElement('button');
+                button.className = 'option-button w-full text-left bg-gray-100 text-gray-700 p-4 rounded-xl border-2 border-transparent hover:border-indigo-500 font-medium shadow-sm';
+                button.textContent = option.text;
+                button.onclick = () => handleAnswer(option.score);
+                optionsContainer.appendChild(button);
+            });
+        }
+
+        function handleAnswer(score) {
+            redScore += score.red;
+            blueScore += score.blue;
+            
+            currentQuestionIndex++;
+            renderQuestion();
+        }
+
+        function showResults() {
+            // Hide quiz, show results
+            quizContainer.classList.add('hidden');
+            resultContainer.classList.remove('hidden');
+
+            const totalScore = redScore + blueScore; // Should be 82 (41 * 2)
+            const redPercent = (redScore / totalScore) * 100;
+            const bluePercent = (blueScore / totalScore) * 100;
+
+            // Update scores in the result area
+            document.getElementById('final-red-score').textContent = redScore;
+            document.getElementById('final-blue-score').textContent = blueScore;
+
+            // Update bar percentages (with a slight delay for transition effect)
+            document.getElementById('red-bar').style.width = `${redPercent}%`;
+            document.getElementById('blue-bar').style.width = `${bluePercent}%`;
+            
+            // Update percentage text inside the bars (with a small timeout for transition)
+            setTimeout(() => {
+                // Ensure text is visible inside the bar only if there's enough space
+                document.getElementById('red-percent-text').textContent = redPercent > 10 ? `${Math.round(redPercent)}%` : '';
+                document.getElementById('blue-percent-text').textContent = bluePercent > 10 ? `${Math.round(bluePercent)}%` : '';
+                
+                // If one side is very small, display the full percentage score next to the final score
+                if (redPercent <= 10) {
+                    document.getElementById('final-red-score').textContent += ` (${Math.round(redPercent)}%)`;
+                }
+                 if (bluePercent <= 10) {
+                    document.getElementById('final-blue-score').textContent += ` (${Math.round(bluePercent)}%)`;
+                }
+            }, 100); 
+            
+
+            const resultTitle = document.getElementById('result-title');
+            const resultSummary = document.getElementById('result-summary');
+            
+            // THRESHOLDS for 82 total points (41/41 split is Centrist)
+            const STRONG_THRESHOLD_DIFFERENCE = 14; 
+
+            if (redScore > blueScore + STRONG_THRESHOLD_DIFFERENCE) {
+                // Strong Red Alignment 
+                resultTitle.textContent = "Strong Red Alignment";
+                resultTitle.className = 'text-2xl font-bold red-text';
+                resultSummary.textContent = "Your answers indicate a strong preference for policies often associated with conservative or 'Red' political platforms, emphasizing principles like **free markets**, **limited government**, and **traditional values**.";
+            } else if (blueScore > redScore + STRONG_THRESHOLD_DIFFERENCE) {
+                // Strong Blue Alignment 
+                resultTitle.textContent = "Strong Blue Alignment";
+                resultTitle.className = 'text-2xl font-bold blue-text';
+                resultSummary.textContent = "Your answers indicate a strong preference for policies often associated with liberal or 'Blue' political platforms, emphasizing principles like **social equality**, **government regulation**, and **social programs**.";
+            } else if (redScore > blueScore) {
+                // Moderate Red Alignment 
+                resultTitle.textContent = "Moderate Red Lean";
+                resultTitle.className = 'text-2xl font-bold red-text';
+                resultSummary.textContent = "You lean towards 'Red' positions, but with a significant mix of 'Blue' ideas. You may hold **fiscally conservative but socially moderate** views.";
+            } else if (blueScore > redScore) {
+                // Moderate Blue Alignment 
+                resultTitle.textContent = "Moderate Blue Lean";
+                resultTitle.className = 'text-2xl font-bold blue-text';
+                resultSummary.textContent = "You lean towards 'Blue' positions, but with a significant mix of 'Red' ideas. You may hold **socially progressive but fiscally moderate** views.";
+            } else {
+                // Centrist (41/41 split)
+                resultTitle.textContent = "Centrist / Balanced";
+                resultTitle.className = 'text-2xl font-bold text-gray-800';
+                resultSummary.textContent = "Your political views appear **balanced**, incorporating a nearly equal mix of 'Red' and 'Blue' policies. You likely consider yourself a moderate or centrist.";
+            }
+        }
+
+        // --- Event Listeners and Initialization ---
+
+        restartButton.addEventListener('click', startQuiz);
+
+        // Start the app immediately
+        window.onload = startQuiz;
+    </script>
+</body>
+</html>
+
